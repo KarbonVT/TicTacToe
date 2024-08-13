@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <style>
+        body, h1, h1#winner, .cell, h2 {
+            color: white;
+            text-shadow: 2px 2px 4px black;
+        }
+        .board.black {
+            background-color: black;
+        }
+        .board.green {
+            background-color: green;
+        }
+        .board.red {
+            background-color: red;
+        }
+        .board.yellow {
+            background-color: yellow;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Robo Tic-Tac-Toe</h1>
+        <div id="board" class="board"></div>
+        <h2 id="iq" class="iq"></h2>
+        <h2 id="console" classs="console"></h2>
+        <h1 id="winner" class="winner"></h1>
+    </div>
+    <script>
+        var socket = io();
+        var board = "         ";  // Initial empty board
+
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('consolelog', function(log) {
+            var consoleDiv = document.getElementById('console');
+            consoleDiv.textContent = 'You said: ' + log
+        });
+
+        socket.on('iq_update', function(iqValue) {
+            var iqDiv = document.getElementById('iq');
+            iqDiv.textContent = 'IQ: ' + iqValue;
+        });
+
+
+        socket.on('update_board', function(newBoard) {
+            board = newBoard;
+            var boardDiv = document.getElementById('board');
+            boardDiv.innerHTML = '';
+            boardDiv.classList.remove('green', 'red', 'yellow');
+            boardDiv.classList.add('black');
+            for (var i = 0; i < 3; i++) {
+                var rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                for (var j = 0; j < 3; j++) {
+                    var cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    var index = i * 3 + j; // Calculate the index in the flattened board
+                    cellDiv.textContent = board[index];
+                    cellDiv.dataset.row = i; // Set row index
+                    cellDiv.dataset.col = j; // Set column index
+                    rowDiv.appendChild(cellDiv);
+                }
+                boardDiv.appendChild(rowDiv);
+            }
+        });
+
+        socket.on('game_winner', function(winner) {
+            var winnerDiv = document.getElementById('winner');
+            var boardDiv = document.getElementById('board');
+            boardDiv.classList.remove('green', 'red', 'yellow', 'black');
+            if (winner) {
+                winnerDiv.textContent = 'Winner: ' + winner;
+                if (winner === 'Karbon') {
+                    boardDiv.classList.add('green');
+                } else {
+                    boardDiv.classList.add('red');
+                }
+            } else {
+                winnerDiv.textContent = 'It\'s a draw!';
+                boardDiv.classList.add('yellow');
+            }
+            
+            // Flash effect for 3 seconds
+            var flashInterval = setInterval(function() {
+                boardDiv.classList.toggle('flash');
+            }, 200); // Toggle every 0.5 seconds
+
+            setTimeout(function() {
+                clearInterval(flashInterval);
+                boardDiv.classList.remove('flash');
+
+                resetBoard();
+                winnerDiv.textContent = '';
+
+            }, 3000); // Stop flashing after 3 seconds (3000 milliseconds)
+        });
+
+        function resetBoard() {
+            socket.emit('reset_board');
+        }
+    </script>
+</body>
+</html>
